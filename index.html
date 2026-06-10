@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4A7C59">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="メモ電卓">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>メモ帳＋電卓</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset & base ───────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --washi:    #F7F5F0;
+      --sumi:     #2C2C2C;
+      --midori:   #4A7C59;
+      --kuchiba:  #8B7355;
+      --keisen:   #D8D4CA;
+      --keisen2:  #EAE7E0;
+      --shadow:   rgba(44,44,44,.10);
+
+      --r:        6px;
+      --font-ui:  'BIZ UDPGothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+      --font-hdr: 'Noto Serif JP', 'Hiragino Mincho ProN', serif;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--washi);
+      color: var(--sumi);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── App shell (3-row flex) ─────────────────── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      height: 100dvh;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: env(safe-area-inset-top, 8px) 0 env(safe-area-inset-bottom, 8px);
+    }
+
+    /* ── Panel shared ───────────────────────────── */
+    .panel {
+      background: #fff;
+      border: 1px solid var(--keisen);
+      border-radius: var(--r);
+      margin: 6px 10px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--midori);
+      color: #fff;
+      font-family: var(--font-hdr);
+      font-size: .72rem;
+      font-weight: 300;
+      letter-spacing: .12em;
+    }
+
+    .panel-header .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.55);
+      flex-shrink: 0;
+    }
+
+    /* ── Clock panel ────────────────────────────── */
+    #clock-panel {
+      flex: 0 0 auto;
+    }
+
+    #clock-body {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 12px;
+      padding: 10px 12px 11px;
+      background: linear-gradient(135deg, #FAFAF7 0%, #F2EFE8 100%);
+    }
+
+    #clock-date {
+      font-family: var(--font-hdr);
+      font-size: 1.05rem;
+      font-weight: 400;
+      color: var(--kuchiba);
+      letter-spacing: .05em;
+    }
+
+    #clock-time {
+      font-family: var(--font-hdr);
+      font-size: 2.0rem;
+      font-weight: 300;
+      color: var(--sumi);
+      letter-spacing: -.01em;
+      line-height: 1;
+    }
+
+    #clock-sec {
+      font-size: .85rem;
+      color: var(--kuchiba);
+      font-family: var(--font-ui);
+      opacity: .7;
+      min-width: 28px;
+    }
+
+    /* ── Memo panel ─────────────────────────────── */
+    #memo-panel {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #memo-panel .panel-header {
+      justify-content: space-between;
+    }
+
+    #memo-status {
+      font-size: .65rem;
+      opacity: .8;
+      font-family: var(--font-ui);
+      transition: color .3s;
+    }
+    #memo-status.saving { color: #FFD580; }
+    #memo-status.saved  { color: #9EF0B8; }
+
+    /* Grid paper effect */
+    #memo-area {
+      flex: 1 1 0;
+      width: 100%;
+      min-height: 0;
+      border: none;
+      outline: none;
+      resize: none;
+      padding: 10px 12px;
+      font-family: var(--font-ui);
+      font-size: .92rem;
+      line-height: 1.85;
+      color: var(--sumi);
+      background:
+        repeating-linear-gradient(
+          transparent,
+          transparent calc(1.85em - 1px),
+          var(--keisen2) calc(1.85em - 1px),
+          var(--keisen2) 1.85em
+        );
+      background-color: var(--washi);
+      caret-color: var(--midori);
+    }
+    #memo-area::placeholder { color: var(--keisen); }
+
+    #memo-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      padding: 5px 8px;
+      border-top: 1px solid var(--keisen2);
+      background: #FAFAF8;
+    }
+
+    #btn-export {
+      font-family: var(--font-ui);
+      font-size: .7rem;
+      padding: 3px 10px;
+      border: 1px solid var(--kuchiba);
+      border-radius: 3px;
+      background: transparent;
+      color: var(--kuchiba);
+      cursor: pointer;
+      letter-spacing: .08em;
+      transition: background .15s, color .15s;
+    }
+    #btn-export:hover, #btn-export:focus-visible {
+      background: var(--kuchiba);
+      color: #fff;
+      outline: none;
+    }
+
+    /* ── Calculator panel ───────────────────────── */
+    #calc-panel {
+      flex: 0 0 auto;
+    }
+
+    #calc-display-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-end;
+      padding: 6px 14px 7px;
+      background: #F2EFE8;
+      border-bottom: 1px solid var(--keisen);
+      min-height: 44px;
+    }
+
+    #calc-display {
+      font-family: var(--font-hdr);
+      font-size: 1.85rem;
+      font-weight: 300;
+      color: var(--sumi);
+      letter-spacing: -.02em;
+      line-height: 1;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      transition: font-size .1s;
+    }
+
+    /* Calc grid */
+    #calc-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--keisen);
+      border-top: 1px solid var(--keisen);
+    }
+
+    .calc-btn {
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 0;
+      height: 52px;
+      font-family: var(--font-ui);
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: filter .08s, background .08s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .calc-btn:active { filter: brightness(.88); }
+
+    /* Number */
+    .calc-btn.num  { background: var(--washi);     color: var(--sumi); }
+    /* Operator */
+    .calc-btn.op   { background: #EBE7DE;           color: var(--kuchiba); font-size: 1.15rem; }
+    /* Equals */
+    .calc-btn.eq   { background: var(--midori);     color: #fff; font-size: 1.2rem; }
+    /* Function (AC, ±, %) */
+    .calc-btn.fn   { background: #E0DDD6;           color: var(--sumi); font-size: .9rem; }
+    /* Zero — double wide */
+    .calc-btn.zero { grid-column: span 2; }
+
+    /* ── Divider accent line ────────────────────── */
+    #app::before {
+      content: '';
+      display: block;
+      height: 3px;
+      background: linear-gradient(90deg, var(--midori) 0%, var(--kuchiba) 100%);
+      flex-shrink: 0;
+    }
+
+    /* ── Media: taller phones ───────────────────── */
+    @media (min-height: 780px) {
+      .calc-btn { height: 58px; }
+      #clock-time { font-size: 2.3rem; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Clock -->
+  <div class="panel" id="clock-panel">
+    <div class="panel-header">
+      <span class="dot"></span>時計
+    </div>
+    <div id="clock-body">
+      <span id="clock-date">----/--/--</span>
+      <span id="clock-time">--:--</span>
+      <span id="clock-sec">:--</span>
+    </div>
+  </div>
+
+  <!-- Memo -->
+  <div class="panel" id="memo-panel">
+    <div class="panel-header">
+      <span class="dot"></span>メモ帳
+      <span id="memo-status">自動保存</span>
+    </div>
+    <textarea id="memo-area" placeholder="ここにメモを入力…&#10;閉じても自動保存されます。"></textarea>
+    <div id="memo-toolbar">
+      <button id="btn-export">TXTで書き出す</button>
+    </div>
+  </div>
+
+  <!-- Calculator -->
+  <div class="panel" id="calc-panel">
+    <div class="panel-header">
+      <span class="dot"></span>電卓
+    </div>
+    <div id="calc-display-row">
+      <div id="calc-display">0</div>
+    </div>
+    <div id="calc-grid">
+      <!-- Row 1 -->
+      <button class="calc-btn fn"  data-val="AC">AC</button>
+      <button class="calc-btn fn"  data-val="±">±</button>
+      <button class="calc-btn fn"  data-val="%">%</button>
+      <button class="calc-btn op"  data-val="÷">÷</button>
+      <!-- Row 2 -->
+      <button class="calc-btn num" data-val="7">7</button>
+      <button class="calc-btn num" data-val="8">8</button>
+      <button class="calc-btn num" data-val="9">9</button>
+      <button class="calc-btn op"  data-val="×">×</button>
+      <!-- Row 3 -->
+      <button class="calc-btn num" data-val="4">4</button>
+      <button class="calc-btn num" data-val="5">5</button>
+      <button class="calc-btn num" data-val="6">6</button>
+      <button class="calc-btn op"  data-val="−">−</button>
+      <!-- Row 4 -->
+      <button class="calc-btn num" data-val="1">1</button>
+      <button class="calc-btn num" data-val="2">2</button>
+      <button class="calc-btn num" data-val="3">3</button>
+      <button class="calc-btn op"  data-val="+">+</button>
+      <!-- Row 5 -->
+      <button class="calc-btn num zero" data-val="0">0</button>
+      <button class="calc-btn num" data-val=".">.</button>
+      <button class="calc-btn eq"  data-val="=">=</button>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .catch(err => console.warn('SW registration failed:', err));
+    });
+  }
+</script>
+</body>
+</html>
